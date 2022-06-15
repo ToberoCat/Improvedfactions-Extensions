@@ -1,0 +1,10 @@
+main: "io.github.toberocat.improvedfactions.DynmapExtension"
+displayName: "Dynmap extension"
+registry: "dynmap_extension"
+version:
+  version: "1.0"
+minVersion:
+  version: "1.3.3"
+testedVersions:
+  - version: "1.3.3"
+dependencies: [ "Dynmap" ]
