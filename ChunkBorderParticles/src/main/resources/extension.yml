@@ -1,0 +1,10 @@
+main: "io.github.toberocat.improvedfactions.ChunkParticleBorderExtension"
+displayName: "Particle border extension"
+registry: "chunk_particles_extension"
+version:
+  version: "1.0"
+minVersion:
+  version: "1.5"
+testedVersions:
+  - version: "1.5"
+dependencies: [ ]

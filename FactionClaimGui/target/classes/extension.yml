@@ -1,0 +1,11 @@
+main: "io.github.toberocat.FactionClaimGuiExtension"
+displayName: "Claim gui extension"
+registry: "faction_claim_gui_extension"
+version:
+  version: '1.0'
+minVersion:
+  version: "1.4"
+testedVersions:
+  - version: "1.4"
+  - version: "1.4.1"
+dependencies: []
