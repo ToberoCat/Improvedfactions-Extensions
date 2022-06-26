@@ -39,11 +39,21 @@ public class SetHomeSubCommand extends SubCommand {
             return;
         }
 
-        FactionModule module = faction.getModules().get(HomeExtension.HOME_EXTENSION_REGISTRY);
 
-        if (module instanceof HomeModule homeModule) homeModule.setHome(player.getLocation());
+        if (!faction.getModules().containsKey(HomeExtension.HOME_MODULE_REGISTRY)) faction
+                .getModules().put(HomeExtension.HOME_MODULE_REGISTRY,
+                        new HomeModule(faction));
 
-        Language.sendMessage("command.faction.sethome.success", player);
+        FactionModule module = faction.getModules().get(HomeExtension.HOME_MODULE_REGISTRY);
+
+
+        if (module instanceof HomeModule homeModule) {
+            homeModule.setHome(player.getLocation());
+            Language.sendMessage("command.faction.sethome.success", player);
+        } else {
+            Language.sendMessage("command.faction.sethome.module-not-set", player);
+        }
+
     }
 
     @Override

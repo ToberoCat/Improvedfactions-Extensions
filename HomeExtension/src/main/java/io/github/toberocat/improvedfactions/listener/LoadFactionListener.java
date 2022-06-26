@@ -14,7 +14,7 @@ public class LoadFactionListener implements Listener {
     public void load(FactionLoadEvent event) {
         Faction faction = event.getFaction();
 
-        if (faction.getModules().containsKey(HomeExtension.HOME_EXTENSION_REGISTRY)) return;
-        faction.getModules().put(HomeExtension.HOME_EXTENSION_REGISTRY, new HomeModule(faction));
+        if (faction.getModules().containsKey(HomeExtension.HOME_MODULE_REGISTRY)) return;
+        faction.getModules().put(HomeExtension.HOME_MODULE_REGISTRY, new HomeModule(faction));
     }
 }

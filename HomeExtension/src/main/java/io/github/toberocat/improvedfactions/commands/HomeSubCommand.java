@@ -31,28 +31,37 @@ public class HomeSubCommand extends SubCommand {
     @Override
     protected void CommandExecute(Player player, String[] strings) {
         Faction faction = FactionUtility.getPlayerFaction(player);
-        FactionModule module = faction.getModules().get(HomeExtension.HOME_EXTENSION_REGISTRY);
 
-        Location home = null;
-        if (module instanceof HomeModule homeModule) home = homeModule.getHome();
+        if (!faction.getModules().containsKey(HomeExtension.HOME_MODULE_REGISTRY)) faction
+                .getModules().put(HomeExtension.HOME_MODULE_REGISTRY,
+                        new HomeModule(faction));
 
-        if (home == null) {
-            Language.sendMessage("command.faction.home.no-home", player);
-            return;
+        FactionModule module = faction.getModules().get(HomeExtension.HOME_MODULE_REGISTRY);
+
+        if (module instanceof HomeModule homeModule) {
+            Location home = homeModule.getHome();
+            if (home == null) {
+                Language.sendMessage("command.faction.home.no-home", player);
+                return;
+            }
+
+            int seconds = HomeExtension.SECONDS_TILL_TELEPORT;
+            if (seconds <= 0) HomeTeleport.teleport(player, home);
+
+            Parseable defaultSecondsParse = new Parseable("{seconds}", ""+seconds);
+            if (HomeExtension.RESET_ON_MOVE)
+                Language.sendMessage("command.faction.home.teleport-scheduled.no-move", player,
+                        defaultSecondsParse);
+            else
+                Language.sendMessage("command.faction.home.teleport-scheduled.default", player,
+                        defaultSecondsParse);
+
+            new HomeTeleport(player, home, seconds);
+        } else {
+            Language.sendMessage("command.faction.home.module-not-set", player);
         }
 
-        int seconds = HomeExtension.SECONDS_TILL_TELEPORT;
-        if (seconds <= 0) HomeTeleport.teleport(player, home);
 
-        Parseable defaultSecondsParse = new Parseable("{seconds}", ""+seconds);
-        if (HomeExtension.RESET_ON_MOVE)
-            Language.sendMessage("command.faction.home.teleport-scheduled.no-move", player,
-                    defaultSecondsParse);
-        else
-            Language.sendMessage("command.faction.home.teleport-scheduled.default", player,
-                    defaultSecondsParse);
-
-        new HomeTeleport(player, home, seconds);
     }
 
     @Override
