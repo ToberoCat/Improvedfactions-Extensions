@@ -20,6 +20,11 @@ public class MeshCache {
         for (World world : Bukkit.getWorlds()) worldCache.put(world.getName(), new WorldCache(world.getName()));
     }
 
+    public void dispose() {
+        worldCache.values().forEach(WorldCache::dispose);
+        worldCache.clear();
+    }
+
     public void cacheFactions() {
         FactionUtility.getAllFactionsStream().forEach(this::cacheRegistry);
     }
@@ -31,7 +36,7 @@ public class MeshCache {
     public void cacheChunk(@NotNull String registry, @NotNull Chunk chunk) {
         WorldCache cache = worldCache.get(chunk.getWorld().getName());
         cache.cacheChunk(registry, chunk);
-        cache.recalculate(registry);
+        cache.updateChunk(registry, chunk);
     }
 
     public void removeCacheChunk(@NotNull String registry, @NotNull Chunk chunk) {
@@ -40,8 +45,16 @@ public class MeshCache {
         cache.recalculate(registry);
     }
 
+    public void removeCache(@NotNull String registry) {
+        worldCache.values().forEach(cache -> cache.removeCache(registry));
+    }
+
     public void cacheRegistry(@NotNull String registry) {
         worldCache.values().forEach((cache) -> cache.cacheRegistry(registry));
+    }
+
+    public void updateChunk(@NotNull String registry, @NotNull Chunk chunk) {
+
     }
 
     public WorldCache getCache(@NotNull String world) {

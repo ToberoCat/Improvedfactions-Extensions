@@ -8,7 +8,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.World;
 import org.bukkit.util.BoundingBox;
-import org.checkerframework.checker.units.qual.C;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
@@ -18,14 +17,27 @@ public class WorldCache {
 
     private final HashMap<String, LinkedList<Shape>> shapes;
     private final HashMap<String, ArrayList<ChunkKey>> chunkScans;
-
+    private final HashMap<ChunkKey, UUID> ids;
     private final String worldName;
+    HashMap<UUID, ArrayList<ChunkKey>> groups;
 
     public WorldCache(@NotNull String worldName) {
         this.worldName = worldName;
-
         this.shapes = new HashMap<>();
+
         this.chunkScans = new HashMap<>();
+        this.ids = new HashMap<>();
+        this.groups = new HashMap<>();
+    }
+
+    public void dispose() {
+        shapes.clear();
+        chunkScans.clear();
+    }
+
+    public void removeCache(@NotNull String registry) {
+        shapes.remove(registry);
+        chunkScans.remove(registry);
     }
 
     public void cacheRegistry(@NotNull String registry) {
@@ -33,14 +45,18 @@ public class WorldCache {
         recalculate(registry);
     }
 
-    public Stream<Shape> getShapes(BoundingBox player) {
-        List<LinkedList<Shape>> copy = shapes.values().stream().toList();
-        return copy.stream().flatMap((list) -> list.stream()
-                .filter(x -> player.contains(x.box())));
+    public Stream<Map.Entry<String, Stream<Shape>>> getShapes(BoundingBox player) {
+        List<Map.Entry<String, LinkedList<Shape>>> copy = shapes.entrySet().stream().toList();
+        return copy.stream().map(entry -> {
+            Stream<Shape> items = entry.getValue().stream().filter(x -> player.overlaps(x.box()));
+
+            return Map.entry(entry.getKey(), items);
+        });
     }
 
     /**
      * Scans all claimed chunks and adds them to claim registry list
+     *
      * @param registry The registry of a faction that should get used for scanning
      */
     public void scanChunks(@NotNull String registry) {
@@ -54,8 +70,6 @@ public class WorldCache {
 
     /**
      * Add a chunk to the registry as claimed
-     * @param registry
-     * @param chunk
      */
     public void cacheChunk(@NotNull String registry, @NotNull Chunk chunk) {
         if (!shapes.containsKey(registry)) chunkScans.put(registry, new ArrayList<>());
@@ -67,6 +81,54 @@ public class WorldCache {
         chunkScans.get(registry).remove(new ChunkKey(chunk.getX(), chunk.getZ()));
     }
 
+    public void updateChunk(@NotNull String registry, @NotNull Chunk action) {
+        World world = Bukkit.getWorld(worldName);
+        if (world == null) return;
+
+        if (!chunkScans.containsKey(registry)) scanChunks(registry);
+        ChunkKey key = new ChunkKey(action.getX(), action.getZ());
+
+        // Clear previous shape cache
+        shapes.remove(registry);
+
+        ArrayList<ChunkKey> scans = chunkScans.get(registry);
+        if (!scans.contains(key)) {
+            UUID id = getUuid(action.getX(), action.getZ());
+            ids.remove(key, id);
+
+            if (!groups.containsKey(id)) groups.put(id, new ArrayList<>());
+            groups.get(id).remove(key);
+
+            ShapeCalculator calculator = new ShapeCalculator(groups, ids);
+            Shape shape = calculator.createGroupShape(world, id);
+            if (shape == null) {
+                shapes.remove(registry);
+                return;
+            }
+
+            if (!shapes.containsKey(registry)) shapes.put(registry, new LinkedList<>());
+            shapes.get(registry).add(shape);
+        } else {
+            UUID id = getUuid(action.getX(), action.getZ());
+            ids.put(key, id);
+
+            if (!groups.containsKey(id)) groups.put(id, new ArrayList<>());
+            groups.get(id).add(key);
+
+            ShapeCalculator calculator = new ShapeCalculator(groups, ids);
+            Shape shape = calculator.createGroupShape(world, id);
+            if (shape == null) return;
+
+            if (!shapes.containsKey(registry)) shapes.put(registry, new LinkedList<>());
+            shapes.get(registry).add(shape);
+        }
+    }
+
+    private UUID getUuid(int x, int z) {
+        ChunkKey neighbourWithId = AsyncTask.find(neighbours(x, z), ids::containsKey);
+        return neighbourWithId == null ? UUID.randomUUID() : ids.get(neighbourWithId);
+    }
+
     public void recalculate(@NotNull String registry) {
         World world = Bukkit.getWorld(worldName);
         if (world == null) return;
@@ -75,16 +137,15 @@ public class WorldCache {
 
         // Clear previous shape cache
         shapes.remove(registry);
+        ids.clear();
+        groups.clear();
 
         ArrayList<ChunkKey> scans = chunkScans.get(registry);
-        HashMap<UUID, ArrayList<ChunkKey>> groups = new HashMap<>();
-        HashMap<ChunkKey, UUID> ids = new HashMap<>();
 
         // Group chunks into one shape per continuous border
         for (ChunkKey chunk : scans) {
             // Get the shape id the chunk belongs to
-            ChunkKey neighbourWithId = AsyncTask.find(neighbours(chunk.x(), chunk.z()), ids::containsKey);
-            UUID id = neighbourWithId == null ? UUID.randomUUID() : ids.get(neighbourWithId);
+            UUID id = getUuid(chunk.x(), chunk.z());
             ids.put(chunk, id);
 
             if (!groups.containsKey(id)) groups.put(id, new ArrayList<>());

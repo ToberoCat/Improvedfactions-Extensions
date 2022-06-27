@@ -1,6 +1,10 @@
 package io.github.toberocat.improvedfactions.particle;
 
 import io.github.toberocat.MainIF;
+import io.github.toberocat.core.factions.FactionUtility;
+import io.github.toberocat.core.utility.settings.PlayerSettings;
+import io.github.toberocat.core.utility.settings.type.EnumSetting;
+import io.github.toberocat.core.utility.settings.type.Setting;
 import io.github.toberocat.improvedfactions.ChunkParticleBorderExtension;
 import io.github.toberocat.improvedfactions.data.PositionPair;
 import io.github.toberocat.improvedfactions.data.Shape;
@@ -8,82 +12,117 @@ import io.github.toberocat.improvedfactions.mesh.WorldCache;
 import org.bukkit.*;
 import org.bukkit.entity.Player;
 import org.bukkit.util.BoundingBox;
-import org.bukkit.util.Vector;
 
-import java.util.ArrayList;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Stream;
 
 import static io.github.toberocat.core.utility.Utility.clamp;
 
 public class ParticleHandler {
-    public static int DENSITY = 1;
-    private final ArrayList<UUID> displayParticles;
-
+    private final HashMap<UUID, ParticlePerformance> displayParticles;
+    private final int taskId;
 
     public ParticleHandler(MainIF plugin) {
-        displayParticles = new ArrayList<>();
+        displayParticles = new HashMap<>();
 
-        Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, () -> {
-            for (UUID uuid : new ArrayList<>(displayParticles)) {
-                Player player = Bukkit.getPlayer(uuid);
+        taskId = Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, () -> {
+            if (MainIF.getIF() == null) return;
+            for (Map.Entry<UUID, ParticlePerformance> entry : new HashMap<>(displayParticles).entrySet()) {
+                ParticlePerformance performance = entry.getValue();
+                if (performance == ParticlePerformance.HIDDEN) return;
+
+                Player player = Bukkit.getPlayer(entry.getKey());
                 if (player == null || !player.isOnline()) continue;
-                sendParticles(player);
+                sendParticles(player, performance);
             }
-        }, 1, ChunkParticleBorderExtension.VISUALISATION_INTERVAL);
+        }, 5, ChunkParticleBorderExtension.VISUALISATION_INTERVAL).getTaskId();
     }
 
-    private void createParticle(Player player, double x, double y, double z, Particle.DustOptions dust) {
-        player.spawnParticle(
-                Particle.REDSTONE,
-                new Location(player.getWorld(), x, y, z),
-                0,
-                dust
-        );
+    public void dispose() {
+        displayParticles.clear();
+        Bukkit.getScheduler().cancelTask(taskId);
     }
 
-    public void sendParticles(Player player) {
-        long renderDstSqrt = (long) clamp(
-                Math.pow(player.getClientViewDistance() * 16, 2),
-                16,
-                ChunkParticleBorderExtension.MAX_PARTICLE_RENDER_DISTANCE);
-        long renderDst = (long) Math.sqrt(renderDstSqrt);
-
-        BoundingBox playerViewBox = getPlayerViewBox(renderDst, player);
-        WorldCache worldCache = ChunkParticleBorderExtension.meshCache.getCache(player.getWorld().getName());
-        World world = player.getWorld();
-        Stream<Shape> renderShapes = worldCache.getShapes(playerViewBox);
-
-        renderShapes.forEach((shape) -> shape.lines().forEach((line -> {
-            for (int i = 0; i < line.getLocations().size(); i += DENSITY) {
-                PositionPair pair = line.getLocations().get(i);
-
-                Color c = Math.random() < 0.2 ? Color.BLACK : Color.RED;
-                if (Math.random() < 0.2) c = Color.WHITE;
-
-                float size = 5;
-
-                Particle.DustOptions dust = new Particle.DustOptions(c, size);
-                createParticle(player, pair.x() + 0.5, world.getHighestBlockYAt(pair.x(), pair.z()) + 1.5,
-                        pair.z() + 0.5, dust);
-            }
-        })));
-    }
-
-    private BoundingBox getPlayerViewBox(long renderDst, Player player) {
-        Location pos = player.getLocation();
-        World world = player.getWorld();
-        return new BoundingBox(
-                pos.getX() - renderDst, world.getMinHeight(), pos.getZ() - renderDst,
-                pos.getX() + renderDst, world.getMaxHeight(), pos.getZ() + renderDst
-        );
+    public void update(Player player, int selected) {
+        displayParticles.replace(player.getUniqueId(), ParticlePerformance.values()[selected]);
     }
 
     public void addPlayer(Player player) {
-        displayParticles.add(player.getUniqueId());
+        displayParticles.put(player.getUniqueId(), getPerformance(player.getUniqueId()));
     }
 
     public void removePlayer(Player player) {
         displayParticles.remove(player.getUniqueId());
     }
+
+    private void createParticle(Player player, double x, double y, double z, Particle.DustOptions dust) {
+        Particle particle = ChunkParticleBorderExtension.PARTICLE;
+        if (particle == Particle.REDSTONE) player.spawnParticle(
+                ChunkParticleBorderExtension.PARTICLE,
+                new Location(player.getWorld(), x, y, z),
+                0,
+                dust
+        );
+        else player.spawnParticle(
+                ChunkParticleBorderExtension.PARTICLE,
+                new Location(player.getWorld(), x, y, z),
+                0
+        );
+    }
+
+    private ParticlePerformance getPerformance(UUID uuid) {
+        Setting setting = PlayerSettings.getSettings(uuid).getPlayerSetting()
+                .get(ChunkParticleBorderExtension.PERFORMANCE_SETTING);
+        if (setting instanceof EnumSetting e)
+            return ParticlePerformance.values()[e.getSelected()];
+        return ParticlePerformance.HIDDEN;
+    }
+
+    private void sendParticles(Player player, ParticlePerformance performance) {
+        BoundingBox playerViewBox = getPlayerViewBox(clamp(player.getClientViewDistance(),1,
+                ChunkParticleBorderExtension.MAX_PARTICLE_RENDER_DISTANCE), player);
+
+        WorldCache worldCache = ChunkParticleBorderExtension.meshCache.getCache(player.getWorld().getName());
+        Stream<Map.Entry<String, Stream<Shape>>> renderShapes = worldCache.getShapes(playerViewBox);
+
+        renderShapes.forEach((entry) -> {
+            String registry = entry.getKey();
+            entry.getValue().forEach((shape -> shape.lines().forEach(line -> {
+                for (int i = 0; i < line.getLocations().size(); i += performance.density) {
+                    PositionPair pair = line.getLocations().get(i);
+
+                    Color c = Math.random() < 0.2 ? Color.BLACK : FactionUtility.getRegistryColor(registry);
+                    if (Math.random() < 0.2) c = Color.WHITE;
+
+                    Location loc = player.getLocation();
+
+                    for (Integer height : pair.cache().heights()) {
+                        float size = (float) clamp(loc.toVector().distanceSquared(pair.toVector(height)) /
+                                20, 2, 10);
+                        if (size >= ChunkParticleBorderExtension.PARTICLE_HIDE_DST)
+                            continue;
+
+                        Particle.DustOptions dust = new Particle.DustOptions(c, size);
+                        for (int y = 0; y < ChunkParticleBorderExtension.PARTICLE_HEIGHT; y++) {
+                            createParticle(player, pair.x() + 0.5, height + y + 0.5,
+                                    pair.z() + 0.5, dust);
+                        }
+                    }
+                }
+            })));
+        });
+    }
+
+    private BoundingBox getPlayerViewBox(int renderDst, Player player) {
+        Chunk chunk = player.getLocation().getChunk();
+        int chunkX = chunk.getX();
+        int chunkZ = chunk.getZ();
+
+        World world = player.getWorld();
+        return new BoundingBox(
+                chunkX - renderDst, world.getMinHeight(), chunkZ - renderDst,
+                chunkX + renderDst, world.getMaxHeight(), chunkZ + renderDst
+        );
+    }
+
 }

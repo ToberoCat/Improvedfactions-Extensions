@@ -44,11 +44,9 @@ public class ShapeCalculator {
         ChunkKey max = new ChunkKey(maxX, maxZ);
 
         // Create lines
-        System.out.println(min + " - " + max);
         LinkedList<Line> lines = new LinkedList<>();
         for (int x = min.x(); x <= max.x(); x++)
             for (int z = min.z(); z <= max.z(); z++) {
-                System.out.println("x: " + x + "; z: " + z);
                 if (!group.contains(new ChunkKey(x, z))) continue;
 
 
@@ -88,8 +86,8 @@ public class ShapeCalculator {
             }
 
         return new Shape(lines, new BoundingBox(
-                min.x() * 16, world.getMinHeight(), min.z() * 16,
-                max.x() * 16, world.getMaxHeight(), max.z() * 16
+                min.x(), world.getMinHeight(), min.z(),
+                max.x(), world.getMaxHeight(), max.z()
         ));
     }
 

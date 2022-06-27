@@ -1,6 +1,7 @@
 package io.github.toberocat.improvedfactions.data;
 
-import java.util.Arrays;
+import io.github.toberocat.improvedfactions.mesh.HeightCache;
+
 import java.util.LinkedList;
 
 public class Line {
@@ -21,9 +22,9 @@ public class Line {
         p2 = max(p1, p2);
 
         if (p1.x() == p2.x()) for (int z = p1.z(); z <= p2.z(); z++)
-            pair.add(new PositionPair(p1.x(), z));
+            pair.add(new PositionPair(p1.x(), z, HeightCache.fromXZ(p1.world(), p1.x(), z)));
         else for (int x = p1.x(); x <= p2.x(); x++)
-            pair.add(new PositionPair(x, p1.z()));
+            pair.add(new PositionPair(x, p1.z(), HeightCache.fromXZ(p1.world(), x, p1.z())));
 
         return pair;
     }
