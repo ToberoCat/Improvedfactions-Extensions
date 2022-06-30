@@ -1,6 +1,10 @@
 package io.github.toberocat.improvedfactions.listener;
 
+import io.github.toberocat.MainIF;
+import io.github.toberocat.core.factions.FactionUtility;
 import io.github.toberocat.improvedfactions.ChunkParticleBorderExtension;
+import org.bukkit.Chunk;
+import org.bukkit.block.Block;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
@@ -21,11 +25,15 @@ public class PlayerListener implements Listener {
 
     @EventHandler
     public void breakBlock(BlockBreakEvent event) {
-
+        final Block block = event.getBlock();
+        final String registry = MainIF.getIF().getClaimManager().getFactionRegistry(block.getChunk());
+        ChunkParticleBorderExtension.meshCache.blockChange(registry, block);
     }
 
     @EventHandler
     public void placeBlock(BlockPlaceEvent event) {
-
+        final Block block = event.getBlock();
+        final String registry = MainIF.getIF().getClaimManager().getFactionRegistry(block.getChunk());
+        ChunkParticleBorderExtension.meshCache.blockChange(registry, block);
     }
 }

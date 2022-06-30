@@ -51,6 +51,7 @@ public class DynmapHandle {
 
 
         marker.setFillStyle(extension.opacity, color);
+        marker.setLineStyle(color, extension.opacity, marker.getLineWeight());
 
         StringBuilder builder = new StringBuilder()
                 .append("<div>")

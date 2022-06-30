@@ -6,7 +6,7 @@
 
     <groupId>io.github.toberocat.improvedfactions</groupId>
     <artifactId>HomeExtension</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.1</version>
     <packaging>jar</packaging>
 
     <name>HomeExtension</name>
@@ -74,7 +74,7 @@
         <dependency>
             <groupId>io.github.toberocat</groupId>
             <artifactId>ImprovedFactions</artifactId>
-            <version>1.3</version>
+            <version>1.5.1</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>

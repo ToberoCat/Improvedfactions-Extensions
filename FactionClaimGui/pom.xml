@@ -76,7 +76,7 @@
         <dependency>
             <groupId>io.github.toberocat</groupId>
             <artifactId>ImprovedFactions</artifactId>
-            <version>LATEST</version>
+            <version>1.5.1</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>

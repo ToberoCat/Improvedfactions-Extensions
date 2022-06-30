@@ -6,6 +6,7 @@ import io.github.toberocat.improvedfactions.ChunkParticleBorderExtension;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.World;
+import org.bukkit.block.Block;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.LinkedHashMap;
@@ -42,7 +43,12 @@ public class MeshCache {
     public void removeCacheChunk(@NotNull String registry, @NotNull Chunk chunk) {
         WorldCache cache = worldCache.get(chunk.getWorld().getName());
         cache.removeChunkCache(registry, chunk);
-        cache.recalculate(registry);
+        cache.updateChunk(registry, chunk);
+    }
+
+    public void blockChange(@NotNull String registry, @NotNull Block block) {
+        WorldCache cache = worldCache.get(block.getWorld().getName());
+        cache.updateChunk(registry, block.getChunk());
     }
 
     public void removeCache(@NotNull String registry) {
